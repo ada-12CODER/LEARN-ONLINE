@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Learn Online - Mega Quiz Platform</title>
+<style>
+body {background:#000;color:#fff;font-family:Arial,sans-serif;margin:0;padding:0;}
+header {background:#111;padding:20px;text-align:center;font-size:28px;font-weight:bold;}
+.subjects {display:flex;flex-wrap:wrap;justify-content:center;margin:20px;gap:15px;}
+.subject-card {background:#111;padding:20px;border:1px solid #333;border-radius:10px;cursor:pointer;transition:transform 0.2s;width:180px;text-align:center;}
+.subject-card:hover {transform:scale(1.05);background:#222;}
+.quiz-container {padding:20px;display:none;}
+.question {background:#111;margin:10px 0;padding:10px;border-radius:5px;}
+input[type="text"] {width:60%;padding:5px;margin-top:5px;border-radius:5px;border:none;}
+.answer-result {margin-left:20px;margin-top:5px;font-weight:bold;}
+button {background:#00ffcc;color:#000;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;margin-top:5px;}
+button:hover {background:#00cc99;}
+.level-button {margin:5px;padding:5px 10px;background:#222;border:none;color:#0f0;border-radius:5px;cursor:pointer;}
+.level-button:hover {background:#333;}
+</style>
+</head>
+<body>
+
+<header>📚 Learn Online - Mega Quiz Platform</header>
+
+<div class="subjects" id="subjectList"></div>
+<div id="quiz" class="quiz-container"></div>
+<div style="text-align:center;margin:20px;">
+  <button id="downloadBtn" onclick="downloadResults()">Download Your Results</button>
+</div>
+
+<script>
+// Subjects / lessons
+const subjects=[
+  "Mathematics","English","Kinyarwanda","Biology","Physics",
+  "Chemistry","Geography","History","ICT","Civics","Entrepreneurship","French"
+];
+
+const QUESTIONS_PER_LEVEL = 5;
+const LEVELS_PER_SUBJECT = 5000;
+
+// Question banks for some subjects
+const questionBank = {
+  "English":[
+    {q:"What is the past tense of 'go'?",a:"went"},
+    {q:"Choose the synonym of 'happy'",options:["sad","joyful","angry","tired"],a:"joyful"},
+    {q:"Is 'He go to school' correct? True or False?",a:"false"},
+    {q:"Fill in the blank: She ____ playing piano.",a:"is"},
+    {q:"Choose the antonym of 'hot'",options:["cold","warm","boiling","burning"],a:"cold"},
+    {q:"Which word is a noun?",options:["run","beautiful","dog","quickly"],a:"dog"},
+    {q:"Correct the sentence: I has a book.",a:"I have a book"},
+    {q:"Is 'They is friends' correct? True or False?",a:"false"},
+    {q:"Choose the correct article: ____ apple a day keeps the doctor away.",options:["A","An","The","No article"],a:"An"},
+    {q:"Fill in the blank: He ____ not like ice cream.",a:"does"}
+  ],
+  "Kinyarwanda":[
+    {q:"Andika ijambo rikurikira mu magambo make: 'Igiti kirakura mu buryo bungana'",a:"Igiti kirakura neza"},
+    {q:"Ni iki kiza ku isaha ya mu gitondo?",options:["Ifunguro rya mugitondo","Ifunguro rya nimugoroba"],a:"Ifunguro rya mugitondo"},
+    {q:"Ni gute wavuga 'Good morning' mu Kinyarwanda?",a:"Mwaramutse"},
+    {q:"Igiteranyo cy'ijambo 'Umuhinzi' ni iki?",a:"Umurima"},
+    {q:"Ni nde wanditse 'Ikinyarwanda cyiza'?",a:"Ntakirutimana"}
+  ],
+  "Mathematics":[], "Biology":[], "Physics":[], "Chemistry":[], 
+  "Geography":[], "History":[], "ICT":[], "Civics":[], "Entrepreneurship":[], "French":[]
+};
+
+// Store user results
+const results={};
+
+// Display subjects
+const subjectList = document.getElementById("subjectList");
+subjects.forEach(subject => {
+  const div = document.createElement("div");
+  div.className = "subject-card";
+  div.innerText = subject;
+  div.onclick = () => showLevels(subject);
+  subjectList.appendChild(div);
+});
+
+// Show levels
+function showLevels(subject){
+  const quizDiv = document.getElementById("quiz");
+  quizDiv.innerHTML=`<h2>${subject} - Select Level</h2>`;
+  for(let l=1; l<=50; l++){ // limit display for performance
+    const btn = document.createElement("button");
+    btn.className = "level-button";
+    btn.innerText=`Level ${l}`;
+    btn.onclick = () => startQuiz(subject,l);
+    quizDiv.appendChild(btn);
+  }
+  quizDiv.style.display="block";
+  window.scrollTo(0,quizDiv.offsetTop);
+}
+
+// Generate unique questions per level
+function generateQuestions(subject, level){
+  const qArr = [];
+  const usedIndexes = new Set();
+  const bank = questionBank[subject] || [];
+
+  for(let i=0; i<QUESTIONS_PER_LEVEL; i++){
+    let question="", answer="", options=[], type="short";
+
+    if(subject==="Mathematics"){
+      const a=Math.floor(Math.random()*50+1);
+      const b=Math.floor(Math.random()*50+1);
+      const ops=["+","-","*"];
+      const op=ops[Math.floor(Math.random()*ops.length)];
+      let correct = 0;
+      if(op==="+"){correct=a+b; question=`Level ${level} - Q${i+1}: ${a}+${b} = ?`;}
+      else if(op==="-"){correct=a-b; question=`Level ${level} - Q${i+1}: ${a}-${b} = ?`;}
+      else {correct=a*b; question=`Level ${level} - Q${i+1}: ${a} × ${b} = ?`;}
+      answer = `${correct}`;
+      type = "short";
+    } else if(bank.length>0){
+      let qIndex;
+      do { qIndex = Math.floor(Math.random()*bank.length); } while(usedIndexes.has(qIndex));
+      usedIndexes.add(qIndex);
+      const qObj = bank[qIndex];
+      question = qObj.q; answer = qObj.a;
+      if(qObj.options){options = qObj.options; type="mcq";}
+    } else {
+      question = `Level ${level} - Q${i+1}: Create your own question for ${subject}`;
+      answer = "Answer";
+      type="short";
+    }
+
+    qArr.push({q:question,a:answer,type,options});
+  }
+  return qArr;
+}
+
+// Display quiz
+function startQuiz(subject, level){
+  const quizDiv = document.getElementById("quiz");
+  const qArr = generateQuestions(subject, level);
+  quizDiv.innerHTML = `<h2>${subject} - Level ${level}</h2>`;
+
+  qArr.forEach((item,index)=>{
+    let html=`<div class="question"><p>Q${index+1}: ${item.q}</p>`;
+    if(item.type==="short"){html+=`<input type="text" id="answer-${subject}-${level}-${index}" placeholder="Type your answer here">`;}
+    else if(item.type==="mcq"){item.options.forEach(opt=>{
+      html+=`<button onclick="checkMCQ('${subject}',${level},${index},'${opt}','${item.a}')">${opt}</button> `;});}
+    html+=`<button onclick="checkAnswer('${subject}',${level},${index},'${item.a}')">Check Answer</button>`;
+    html+=`<div id="result-${subject}-${level}-${index}" class="answer-result"></div></div>`;
+    quizDiv.innerHTML += html;
+  });
+
+  quizDiv.style.display="block";
+  window.scrollTo(0,quizDiv.offsetTop);
+}
+
+// Check answers
+function checkAnswer(subject, level, index, correctAnswer){
+  const input = document.getElementById(`answer-${subject}-${level}-${index}`);
+  if(!input) return;
+  const userAnswer = input.value.trim();
+  const resultDiv = document.getElementById(`result-${subject}-${level}-${index}`);
+  results[`Q${subject}-${level}-${index}`]={question:`Level ${level} - Q${index+1}`,userAnswer,correctAnswer};
+  if(userAnswer.toLowerCase()===correctAnswer.toLowerCase()){resultDiv.innerHTML="✅ Correct!"; resultDiv.style.color="#0f0";}
+  else{resultDiv.innerHTML=`❌ Wrong! Correct: ${correctAnswer}`; resultDiv.style.color="#f00";}
+}
+
+// Check MCQ
+function checkMCQ(subject, level, index, selected, correctAnswer){
+  const resultDiv = document.getElementById(`result-${subject}-${level}-${index}`);
+  results[`Q${subject}-${level}-${index}`]={question:`Level ${level} - Q${index+1}`,userAnswer:selected,correctAnswer};
+  if(selected===correctAnswer){resultDiv.innerHTML="✅ Correct!"; resultDiv.style.color="#0f0";}
+  else{resultDiv.innerHTML=`❌ Wrong! Correct: ${correctAnswer}`; resultDiv.style.color="#f00";}
+}
+
+// Download results
+function downloadResults(){
+  let text="Your Quiz Results:\n\n";
+  for(const key in results){
+    text+=`Question: ${results[key].question}\nYour Answer: ${results[key].userAnswer}\nCorrect Answer: ${results[key].correctAnswer}\n\n`;
+  }
+  const blob = new Blob([text],{type:"text/plain"});
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "QuizResults.txt";
+  link.click();
+}
+</script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Page Title</title>
+</head>
+<body>
+
+
+
+</body>
+</html>
